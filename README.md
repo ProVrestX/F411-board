@@ -4,7 +4,7 @@
 ## Board
 
 
-<img src="Files/photo.jpg" alt="board photo" width="50%" height="auto">
+<img src="Files/board.jpg" alt="board photo" width="50%" height="auto">
 
 
 ## Modules
