@@ -1,0 +1,35 @@
+{
+  "configurations": [
+    {
+      "name": "STM32",
+      "includePath": [
+        "Core/Inc",
+        "Core/Inc/UI",
+        "Core/Lib/DHT",
+        "Core/Lib/DWT",
+        "Core/Lib/Encoder",
+        "Core/Lib/Flash",
+        "Core/Lib/MPU",
+        "Core/Lib/SD_SPI/Inc",
+        "Core/Lib/ST7735",
+        "Drivers/CMSIS/Device/ST/STM32F4xx/Include",
+        "Drivers/CMSIS/Include",
+        "Drivers/STM32F4xx_HAL_Driver/Inc",
+        "Drivers/STM32F4xx_HAL_Driver/Inc/Legacy",
+        "FATFS/App",
+        "FATFS/Target",
+        "Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc",
+        "Middlewares/ST/STM32_USB_Device_Library/Core/Inc",
+        "Middlewares/Third_Party/FatFs/src",
+        "USB_DEVICE/App",
+        "USB_DEVICE/Target"
+      ],
+      "defines": [
+        "STM32F411xE",
+        "USE_HAL_DRIVER"
+      ],
+      "compilerPath": "/home/andrew/STMicroelectronics/STM32Cube/stm32cubeclt_1.21.0/GNU-tools-for-STM32/bin/arm-none-eabi-gcc"
+    }
+  ],
+  "version": 4
+}

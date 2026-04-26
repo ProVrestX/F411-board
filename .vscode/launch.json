@@ -1,0 +1,36 @@
+{
+    "configurations": [
+        {
+            "showDevDebugOutput": "parsed",
+            "cwd": "${workspaceRoot}",
+            "executable": "./build/debug/F411-board.elf",
+            "name": "Debug STM32",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "preLaunchTask": "Build STM",
+            "device": "stm32f411xe.s",
+            "configFiles": [
+                "openocd.cfg"
+            ],
+            "svdPath": "${command:device-manager.getDevicePack}",
+            "deviceName": "${command:device-manager.getDeviceName}"
+        },
+        {
+            "showDevDebugOutput": "parsed",
+            "cwd": "${workspaceRoot}",
+            "executable": "./build/debug/F411-board.elf",
+            "name": "Attach STM32",
+            "request": "attach",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "preLaunchTask": "Build STM",
+            "device": "stm32f411xe.s",
+            "configFiles": [
+                "openocd.cfg"
+            ],
+            "svdPath": "${command:device-manager.getDevicePack}",
+            "deviceName": "${command:device-manager.getDeviceName}"
+        }
+    ]
+}
