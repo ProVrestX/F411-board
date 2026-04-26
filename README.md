@@ -4,7 +4,7 @@
 ## Board
 
 
-<img src="Files/board.jpg" alt="board photo" width="50%" height="auto">
+<img src="Files/board.jpg" alt="board photo" width="70%" height="auto">
 
 
 ## Modules
@@ -36,4 +36,4 @@
 
 ## STM32F411CEU6 Pinout
 
-<img src="Files/STM32F4x1_PinoutDiagram_RichardBalint.png" alt="stm32 pinout" width="50%" height="auto">
+<img src="Files/STM32F4x1_PinoutDiagram_RichardBalint.png" alt="stm32 pinout" width="70%" height="auto">
