@@ -9,7 +9,9 @@ extern I2C_HandleTypeDef MPU_I2C;
 #endif
 
 uint8_t MPU_init_state = 0;
-
+static volatile uint8_t MPU_read_data = 0;
+static volatile uint8_t MPU_read_fail = 0;
+static volatile uint8_t MPU_data[14];
 
 static void MPU_Transmit(uint16_t mem_addr, uint8_t *p_buf, uint16_t size);
 static void MPU_Receive(uint16_t mem_addr, uint8_t *p_buf, uint16_t size);
@@ -22,6 +24,12 @@ static void MPU_Transmit(uint16_t mem_addr, uint8_t *p_buf, uint16_t size) {
 static void MPU_Receive(uint16_t mem_addr, uint8_t *p_buf, uint16_t size) {
     HAL_I2C_Mem_Read(&MPU_I2C, MPU_ADDR, mem_addr, I2C_MEMADD_SIZE_8BIT, p_buf, size, 100);
 }
+
+#ifdef MPU_I2C_DMA
+    uint8_t MPU_WaitReady(void) {
+        return MPU_dma_state;
+    }
+#endif
 
 uint8_t MPU_Init(void) {
     uint8_t cmd = 0x80;
@@ -54,34 +62,67 @@ uint8_t MPU_Init(void) {
 	return 0;
 }
 
-void MPU_Read(MPU_Data_t *data) {
+void MPU_Read(void) {
     if(!MPU_init_state)
         return;
 
-    uint8_t MPU_data[14];
-
     #ifdef MPU_I2C_DMA
+        if(MPU_dma_state)
+            return;
+
         MPU_dma_state = 1;
         if(HAL_I2C_Mem_Read_DMA(&MPU_I2C, MPU_ADDR, MPU_ACCEL_OUT, 
-                I2C_MEMADD_SIZE_8BIT, MPU_data, MPU_DATA_LEN) != HAL_OK) {
+                I2C_MEMADD_SIZE_8BIT, (uint8_t*)MPU_data, MPU_DATA_LEN) != HAL_OK) {
             MPU_dma_state = 0;
+            MPU_read_fail = 1;
             return;
         }
-        while(MPU_dma_state);
+        // while(MPU_dma_state);
     #else
         if(HAL_I2C_Mem_Read(&MPU_I2C, MPU_ADDR, MPU_ACCEL_OUT, 
-                I2C_MEMADD_SIZE_8BIT, MPU_data, MPU_DATA_LEN, 100) != HAL_OK) {
+                I2C_MEMADD_SIZE_8BIT, (uint8_t*)MPU_data, MPU_DATA_LEN, 100) != HAL_OK) {
+            MPU_read_fail = 1;
             return;
         }
     #endif
 
+    MPU_read_data = 1;
+}
+
+void MPU_ReadIfFail(void) {
+    if(!MPU_read_fail || MPU_read_data)
+        return;
+
+    MPU_read_fail = 0;
+    MPU_Read();
+}
+
+void MPU_GetData(MPU_Data_t *data) {
+    if(!MPU_init_state)
+        return;
+    if(!MPU_read_data)
+        return;
+
+    #ifdef MPU_I2C_DMA
+        while(MPU_dma_state);
+    #endif
+        
+    __disable_irq();
+    int16_t raw_accel[3], raw_gyro[3], raw_temp;
     for(int i = 0; i < 3; i++) {
-        data->accel[i] = (int16_t)((MPU_data[i*2] << 8) | MPU_data[i*2 + 1]) / MPU_ACCEL_DIV * G_ACCEL;
-        data->gyro[i] = (int16_t)((MPU_data[i*2 + 8] << 8) | MPU_data[i*2 + 9]) / MPU_GYRO_DIV;
+        raw_accel[i] = (int16_t)((MPU_data[i*2] << 8) | MPU_data[i*2 + 1]);
+        raw_gyro[i]  = (int16_t)((MPU_data[i*2 + 8] << 8) | MPU_data[i*2 + 9]);
     }
+    raw_temp = (int16_t)((MPU_data[6] << 8) | MPU_data[7]);
+    __enable_irq();
 
-    data->temp = (int16_t)((MPU_data[6] << 8) | MPU_data[7]) / 340.0f + 36.53f;
-
+    for(int i = 0; i < 3; i++) {
+        data->accel[i] = raw_accel[i] / MPU_ACCEL_DIV * G_ACCEL;
+        data->gyro[i]  = raw_gyro[i] / MPU_GYRO_DIV;
+    }
+    data->temp = raw_temp / 340.0f + 36.53f;
+        
+    MPU_read_data = 0;
     data->ready = 1;
 }
 

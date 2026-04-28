@@ -31,6 +31,8 @@ extern SPI_HandleTypeDef hspi1;
 #define SD_CS_LOW()     HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_RESET)
 #define SD_CS_HIGH()    HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_SET)
 
+static uint8_t tx_dummy[512];
+
 /***************************************************************
  * 🚫 DO NOT MODIFY BELOW THIS LINE
  * Auto-generated/system-managed code. Changes may be lost.
@@ -71,8 +73,8 @@ static void SD_TransmitBuffer(const uint8_t *buffer, uint16_t len) {
 
 static void SD_ReceiveBuffer(uint8_t *buffer, uint16_t len) {
 #if USE_DMA
-	static uint8_t tx_dummy[512];
-    for (int i = 0; i < len; i++) tx_dummy[i] = 0xFF;  // Fill with 0xFF
+	// static uint8_t tx_dummy[512];
+    // for (int i = 0; i < len; i++) tx_dummy[i] = 0xFF;  // Fill with 0xFF
     dma_rx_done = 0;
     HAL_SPI_TransmitReceive_DMA(&SD_SPI_HANDLE, tx_dummy, buffer, len);
     while (!dma_rx_done);
@@ -80,8 +82,8 @@ static void SD_ReceiveBuffer(uint8_t *buffer, uint16_t len) {
 //    for (uint16_t i = 0; i < len; i++) {
 //        buffer[i] = SD_ReceiveByte();
 //    }
-    static uint8_t tx_dummy[512];
-	for (int i = 0; i < len; i++) tx_dummy[i] = 0xFF;  // Fill with 0xFF
+    // static uint8_t tx_dummy[512];
+	// for (int i = 0; i < len; i++) tx_dummy[i] = 0xFF;  // Fill with 0xFF
     HAL_SPI_TransmitReceive(&SD_SPI_HANDLE, tx_dummy, buffer, len, HAL_MAX_DELAY);
 #endif
 }
@@ -124,6 +126,8 @@ SD_Status SD_SPI_Init(void) {
     uint8_t i, response;
     uint8_t r7[4];
     uint32_t retry;
+
+    for (int i = 0; i < 512; i++) tx_dummy[i] = 0xFF;  // Fill with 0xFF
 
     SD_CS_HIGH();
     for (i = 0; i < 10; i++) SD_TransmitByte(0xFF);

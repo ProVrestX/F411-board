@@ -59,6 +59,13 @@ extern C {
  * @brief W25Q Functions
  * @{
  */
+#define W25Q_Select() (Flash_CS_GPIO_Port->BSRR = ((uint32_t)Flash_CS_Pin << 16))
+#define W25Q_Unselect() (Flash_CS_GPIO_Port->BSRR = Flash_CS_Pin)
+
+#ifdef W25Q_SPI_DMA
+    uint8_t W25Q_WaitReady(void);
+#endif
+
 uint8_t W25Q_Init(void);
 
 void W25Q_Reset(void);

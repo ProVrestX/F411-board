@@ -1,18 +1,13 @@
 #include "flash.h"
 
-
 extern SPI_HandleTypeDef W25Q_SPI;
-
-
-// #define W25Q_Select() HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET)
-// #define W25Q_Unselect() HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET)
-#define W25Q_Select()  (Flash_CS_GPIO_Port->BSRR = ((uint32_t)Flash_CS_Pin << 16))
-#define W25Q_Unselect() (Flash_CS_GPIO_Port->BSRR = Flash_CS_Pin)
 
 
 #ifdef W25Q_SPI_DMA
     volatile uint8_t W25Q_dma_state = 0;
 #endif
+
+static uint8_t w25q_dummy[256];
 
 
 static void W25Q_Transmit(uint8_t *p_buf, uint16_t size);
@@ -27,19 +22,25 @@ static void W25Q_Transmit(uint8_t *p_buf, uint16_t size) {
 }
 
 static void W25Q_Receive(uint8_t *p_buf, uint16_t size) {
-    HAL_SPI_Receive(&W25Q_SPI, p_buf, size, 100);
+    HAL_SPI_TransmitReceive(&W25Q_SPI, w25q_dummy, p_buf, size, 100);
 }
 
 #ifdef W25Q_SPI_DMA
     static void W25Q_Receive_DMA(uint8_t *p_buf, uint16_t size) {
         W25Q_dma_state = 1;
         HAL_SPI_Receive_DMA(&W25Q_SPI, p_buf, size);
-        while(W25Q_dma_state);
+        // while(W25Q_dma_state);
+    }
+
+    uint8_t W25Q_WaitReady(void) {
+        return W25Q_dma_state;
     }
 #endif
 
 
 uint8_t W25Q_Init(void) {
+    for(int i = 0; i < 256; i++) w25q_dummy[i] = 0xFF;
+
     HAL_Delay(100);
 	W25Q_Reset();
 	HAL_Delay(100);
@@ -213,12 +214,11 @@ void W25Q_ReadDataFast(uint32_t addr, uint8_t* p_data, uint32_t size) {
 	W25Q_Transmit(cmd, 5);
 
     #ifdef W25Q_SPI_DMA
-        W25Q_Receive_DMA(p_data, size);
+        W25Q_Receive_DMA(p_data, size); // W25Q_Unselect в прерывании
     #else
 	    W25Q_Receive(p_data, size);
+        W25Q_Unselect();
     #endif
-
-    W25Q_Unselect();
 }
 
 void W25Q_ReadPage(uint32_t page_num, uint32_t offset, uint8_t* p_data, uint16_t size) {

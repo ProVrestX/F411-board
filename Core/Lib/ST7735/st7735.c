@@ -166,7 +166,11 @@ void ST7735_Init(void){
 #endif
 }
 //==============================================================================
-
+#ifdef ST7735_SPI_HAL_DMA
+    uint8_t ST7735_WaitReady(void) {
+        return ST7735_dma_state;
+    }
+#endif
 
 //==============================================================================
 // Процедура управления SPI
@@ -274,6 +278,10 @@ void ST7735_DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint
     if (max_y < y+h) {
 		max_y = y+h;
 	}
+
+    #ifdef ST7735_SPI_HAL_DMA
+        while(ST7735_dma_state);
+    #endif
 
     for( uint16_t i = 0; i < h; i++ ){
         for( uint16_t j = 0; j < w; j++ ){
@@ -486,8 +494,6 @@ __inline static void ST7735_SendDataMASS(uint8_t* buff, size_t buff_size){
 	#ifdef ST7735_SPI_HAL
 		#ifdef ST7735_SPI_HAL_DMA
 
-			while(ST7735_dma_state);
-
 			if( buff_size <= 0xFFFF ){
 				ST7735_dma_state = 1;
 				HAL_SPI_Transmit_DMA(&ST7735_SPI_HAL, buff, buff_size);
@@ -500,8 +506,11 @@ __inline static void ST7735_SendDataMASS(uint8_t* buff, size_t buff_size){
 					buff_size-=0xFFFF;
 					buff+=0xFFFF;
 				}
+                ST7735_dma_state = 1;
 				HAL_SPI_Transmit_DMA(&ST7735_SPI_HAL, buff, buff_size);
 			}
+
+            // while(ST7735_dma_state);
 			
 		#else
 			if( buff_size <= 0xFFFF ){
@@ -698,6 +707,10 @@ void ST7735_FillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color)
 	}
 
 	if( x >=0 && y >=0 ){
+        #ifdef ST7735_SPI_HAL_DMA
+            while(ST7735_dma_state);
+        #endif
+
 		for( uint16_t i = 0; i < h; i++ ){
 			for( uint16_t j = 0; j < w; j++ ){
 				buff_frame[( y + i ) * ST7735_Width + x + j] = ((color & 0xFF)<<8) | (color >> 8 );
@@ -1059,6 +1072,10 @@ void ST7735_DrawPixel(int16_t x, int16_t y, uint16_t color){
     if (max_y < y+1) {
 		max_y = y+1;
 	}
+
+    #ifdef ST7735_SPI_HAL_DMA
+        while(ST7735_dma_state);
+    #endif
 
 	buff_frame[y * ST7735_Width + x] = ((color & 0xFF)<<8) | (color >> 8 );
 #else	//если попиксельный вывод
@@ -2151,7 +2168,9 @@ void ST7735_DrawArc(int16_t x0, int16_t y0, int16_t radius, int16_t startAngle, 
         min_y = ST7735_Height;
 		max_y = 0;
 
-		ST7735_Unselect();
+        #ifndef ST7735_SPI_HAL_DMA // ST7735_Unselect в прерывании
+            ST7735_Unselect();
+        #endif
 	}
 	//==============================================================================
 	
@@ -2159,6 +2178,10 @@ void ST7735_DrawArc(int16_t x0, int16_t y0, int16_t radius, int16_t startAngle, 
 	// Процедура очистка только буфера кадра  ( при етом сам экран не очищаеться )
 	//==============================================================================
 	void ST7735_ClearFrameBuffer(void){
+        #ifdef ST7735_SPI_HAL_DMA
+            while(ST7735_dma_state);
+        #endif
+
 		memset((uint8_t*)buff_frame, 0x00, ST7735_Width*ST7735_Height*sizeof(uint16_t) );
         min_y = 0;
 		max_y = ST7735_Height;

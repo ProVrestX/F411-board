@@ -13,8 +13,10 @@
 #include "st7735.h"
 #include "fonts.h"
 #include "sd_functions.h"
+#include "encoder.h"
 
 #include "sd_menu.h"
+
 
 Item_t main_menu_item[] = {
 		{"Sec menu", &open_sec_menu},
@@ -33,20 +35,22 @@ Menu_t *cur_menu = &main_menu;
 uint8_t cursor_pos = 0;
 
 static void draw_menu(void);
-static void cursor_scrolling(int8_t dur);
+static void cursor_scrol(int8_t dur);
 static void cursor_select(void);
 
-// static void SD_menu_select(void);
-// static void draw_SD(void);
 
 void (*draw_ui)(void) = draw_menu;
-void (*process_select)(void) = cursor_select;
-void (*process_scrolling)(int8_t dur) = cursor_scrolling;
+
+void ui_init(void) {
+    cursor_pos = 0;
+    cur_menu = &main_menu;
+    set_menu_func();
+}
 
 void set_menu_func(void) {
 	draw_ui = draw_menu;
-	process_select = cursor_select;
-	process_scrolling = cursor_scrolling;
+	Encoder_SetClickFunc(cursor_select);
+    Encoder_SetScrolFunc(cursor_scrol);
 }
 
 static void draw_menu(void) {
@@ -79,7 +83,7 @@ static void draw_menu(void) {
 	ST7735_Update();
 }
 
-static void cursor_scrolling(int8_t dur) {
+static void cursor_scrol(int8_t dur) {
 	if(dur < 0) {
 		if(cursor_pos > 0)
 			cursor_pos--;

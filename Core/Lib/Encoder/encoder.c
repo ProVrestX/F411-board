@@ -6,7 +6,7 @@ volatile uint8_t enc_clk = 0;
 static void (*Enc_Scrol)(int8_t dur) = NULL;
 static void (*Enc_Click)(void) = NULL;
 
-void Enc_Check(void) {
+void Encoder_Check(void) {
     if(enc_dur) {
         if(Enc_Scrol != NULL)
             Enc_Scrol(enc_dur);
@@ -20,10 +20,10 @@ void Enc_Check(void) {
     }
 }
 
-void Enc_SetScrolFunc(void (*Enc_ScrolFunc)(int8_t dur)) {
+void Encoder_SetScrolFunc(void (*Enc_ScrolFunc)(int8_t dur)) {
     Enc_Scrol = Enc_ScrolFunc;
 }
 
-void Enc_SetClickFunc(void (*Enc_ClickFunc)(void)) {
+void Encoder_SetClickFunc(void (*Enc_ClickFunc)(void)) {
     Enc_Click = Enc_ClickFunc;
 }

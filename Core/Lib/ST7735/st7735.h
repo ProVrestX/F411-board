@@ -256,8 +256,9 @@ extern uint16_t ST7735_Y_Start;
 //###########################################################################################
 //###########################################################################################
 
-
-
+#ifdef ST7735_SPI_HAL_DMA
+    uint8_t ST7735_WaitReady(void);
+#endif
 void ST7735_Init(void);
 void ST7735_DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint16_t* data);	
 void ST7735_HardReset(void);

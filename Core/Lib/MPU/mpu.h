@@ -50,8 +50,13 @@ typedef struct {
 } MPU_Data_t;
 
 
+#ifdef MPU_I2C_DMA
+    uint8_t MPU_WaitReady(void);
+#endif
 uint8_t MPU_Init(void);
-void MPU_Read(MPU_Data_t *data);
+void MPU_Read(void);
+void MPU_ReadIfFail(void);
+void MPU_GetData(MPU_Data_t *data);
 
 // class Accel {
 // public:

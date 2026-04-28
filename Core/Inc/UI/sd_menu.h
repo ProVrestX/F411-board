@@ -8,6 +8,10 @@
 #ifndef INC_MENU_SD_MENU_H_
 #define INC_MENU_SD_MENU_H_
 
+#include "main.h"
+
+
+void open_SD_menu(void);
 
 
 #endif /* INC_MENU_SD_MENU_H_ */

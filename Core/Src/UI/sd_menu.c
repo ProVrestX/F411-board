@@ -13,24 +13,27 @@
 #include "st7735.h"
 #include "fonts.h"
 #include "sd_functions.h"
+#include "encoder.h"
+
 
 char sd_buf[256] = {};
 
-static void SD_menu_select(void);
+static void menu_SD_select(void);
 static void draw_SD(void);
+
 
 void open_SD_menu(void) {
 	if(!SD_CheckState())
 		return;
 
 	draw_ui = draw_SD;
-	process_select = SD_menu_select;
-	process_scrolling = NULL;
+	Encoder_SetClickFunc(menu_SD_select);
+    Encoder_SetScrolFunc(NULL);
 
 	draw_ui();
 }
 
-static void SD_menu_select(void) {
+static void menu_SD_select(void) {
 	open_main_menu();
 	set_menu_func();
 	draw_ui();

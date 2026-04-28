@@ -6,6 +6,9 @@
 
 <img src="Files/board.jpg" alt="board photo" width="70%" height="auto">
 
+## Scheme
+
+[Download Scheme (PDF)](Files/Scheme.pdf)
 
 ## Modules
 
@@ -25,15 +28,20 @@
 
 ### ESP32-C6 SuperMini:
 
-| Module   | Pins                                           |
-|:---------|:-----------------------------------------------|
-| STM32    | UARTx()                                        |
-| OLED     | I2Cx()                                         |
-| NRF24L01 | SPIx() + CE() + ?CS()                          |
-| IR       | RX() + TX()                                    |
-| Encoder  | CLK() + DT() + SW()                            |
+| Module   | Pins                                    |
+|:---------|:----------------------------------------|
+| STM32    | UART0(TX,RX)                            |
+| OLED     | I2C(14,15)                              |
+| NRF24L01 | SPI2(1,6,7) + CE(18) + CS(19) + IRQ(20) |
+| IR       | RX(0) + TX(2)                           |
+| Encoder  | CLK(5) + DT(3) + SW(4)                  |
+
 
 
 ## STM32F411CEU6 Pinout
 
 <img src="Files/STM32F4x1_PinoutDiagram_RichardBalint.png" alt="stm32 pinout" width="100%" height="auto">
+
+## ESP32-C6 SuperMini Pinout
+
+<img src="Files/esp32c6_supermini.png" alt="esp32 pinout" width="100%" height="auto">

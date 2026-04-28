@@ -8,9 +8,9 @@ extern C {
 #include "main.h"
 
 
-void Enc_Check(void);
-void Enc_SetScrolFunc(void (*Enc_ScrolFunc)(int8_t dur));
-void Enc_SetClickFunc(void (*Enc_ClickFunc)(void));
+void Encoder_Check(void);
+void Encoder_SetScrolFunc(void (*Enc_ScrolFunc)(int8_t dur));
+void Encoder_SetClickFunc(void (*Enc_ClickFunc)(void));
 
 
 #ifdef __cplusplus
