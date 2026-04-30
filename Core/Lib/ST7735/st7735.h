@@ -47,7 +47,7 @@ extern C {
 			
 			// указываем порт SPI для HAL ( медлено )--------
 			#define 	ST7735_SPI_HAL 		hspi1
-			// #define 	ST7735_SPI_HAL_DMA
+			#define 	ST7735_SPI_HAL_DMA
 			//-----------------------------------------------
 			
 		//============================================================================
@@ -288,6 +288,8 @@ void ST7735_DrawEllipseWithAngle(int16_t x0, int16_t y0, int16_t radiusX, int16_
 void ST7735_DrawChar(uint16_t x, uint16_t y, uint16_t TextColor, uint16_t BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, unsigned char ch);
 void ST7735_DrawCharWithAngle(uint16_t x, uint16_t y, uint16_t TextColor, uint16_t BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, double angle_degrees, unsigned char ch);
 void ST7735_print(uint16_t x, uint16_t y, uint16_t TextColor, uint16_t BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, char *str);
+void ST7735_printNum(uint16_t x, uint16_t y, uint16_t TextColor, uint16_t BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, int num);
+void ST7735_printHex(uint16_t x, uint16_t y, uint16_t TextColor, uint16_t BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, int num);
 void ST7735_printWithAngle(uint16_t x, uint16_t y, uint16_t TextColor, uint16_t BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, double angle_degrees, char *str);
 void ST7735_rotation( uint8_t rotation );
 void ST7735_DrawBitmap(int16_t x, int16_t y, const unsigned char* bitmap, int16_t w, int16_t h, uint16_t color);

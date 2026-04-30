@@ -43,17 +43,15 @@ uint8_t DHT_Read(DHT_Data_t *data) {
     }
     __enable_irq();
 
-    if ((buffer[0] + buffer[1] + buffer[2] + buffer[3]) != buffer[4]) {
+    if ((uint8_t)(buffer[0] + buffer[1] + buffer[2] + buffer[3]) != buffer[4]) {
         return DHT_CHECKSUM;
     }
 
     int16_t temp_raw = ((int16_t)(buffer[2] & 0x7F) << 8) | buffer[3];
     if (buffer[2] & 0x80) temp_raw = -temp_raw;
-
-    uint16_t hum_raw = (buffer[0] << 8) | buffer[1];
-
     data->temp = temp_raw / 10.0f;
-    data->hum = hum_raw / 10.0f;
+
+    data->hum = ((buffer[0] << 8) | buffer[1]) / 10;
 
     return DHT_OK;
 }

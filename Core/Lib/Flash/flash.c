@@ -8,6 +8,7 @@ extern SPI_HandleTypeDef W25Q_SPI;
 #endif
 
 static uint8_t w25q_dummy[256];
+static uint8_t init_state = 0;
 
 
 static void W25Q_Transmit(uint8_t *p_buf, uint16_t size);
@@ -51,7 +52,16 @@ uint8_t W25Q_Init(void) {
 		return 1;
 	}
 
+    init_state = 1;
     return 0;
+}
+
+uint8_t W25Q_CheckState(void) {
+    if(W25Q_GetId() != W25Q_ID) {
+        init_state = 0;
+    }
+
+    return init_state;
 }
 
 void W25Q_Reset(void) {

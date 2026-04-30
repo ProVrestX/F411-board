@@ -64,7 +64,6 @@ void Error_Handler(void);
 #define Enc_SW_EXTI_IRQn EXTI0_IRQn
 #define Enc_CLK_Pin GPIO_PIN_1
 #define Enc_CLK_GPIO_Port GPIOA
-#define Enc_CLK_EXTI_IRQn EXTI1_IRQn
 #define Flash_CS_Pin GPIO_PIN_4
 #define Flash_CS_GPIO_Port GPIOA
 #define Joy_X_Pin GPIO_PIN_0
@@ -77,11 +76,11 @@ void Error_Handler(void);
 #define TFT_DC_GPIO_Port GPIOB
 #define Buz_Pin GPIO_PIN_8
 #define Buz_GPIO_Port GPIOA
-#define Accel_INT_Pin GPIO_PIN_15
-#define Accel_INT_GPIO_Port GPIOA
-#define Accel_INT_EXTI_IRQn EXTI15_10_IRQn
-#define Enc_DT_Pin GPIO_PIN_4
-#define Enc_DT_GPIO_Port GPIOB
+#define Enc_DT_Pin GPIO_PIN_15
+#define Enc_DT_GPIO_Port GPIOA
+#define Accel_INT_Pin GPIO_PIN_3
+#define Accel_INT_GPIO_Port GPIOB
+#define Accel_INT_EXTI_IRQn EXTI3_IRQn
 #define DHT_Pin GPIO_PIN_5
 #define DHT_GPIO_Port GPIOB
 #define Joy_SW_Pin GPIO_PIN_8

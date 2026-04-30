@@ -23,20 +23,25 @@
 #include "fatfs.h"
 #include "i2c.h"
 #include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "usb_device.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
+#include <stdlib.h>
 #include "usbd_cdc_if.h"
 #include "dwt_delay.h"
-// #include "sd_functions.h"
-// #include "st7735.h"
-// #include "flash.h"
-// #include "dht.h"
-// #include "mpu.h"
-// #include "encoder.h"
+#include "sd_functions.h"
+#include "st7735.h"
+#include "flash.h"
+#include "dht.h"
+#include "mpu.h"
+#include "encoder.h"
+#include "joystick.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,6 +62,25 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+
+char mesg[128] = {0};
+uint8_t mesg_len = 0;
+
+
+
+DHT_Data_t dht_data = {0};
+MPU_Data_t mpu_data = {0};
+Joystick_Data_t joy_data = {0};
+MPU_Angles_t angles = {0};
+
+
+// Буферы для углов (DMP выдаёт их в градусах)
+float gs_pitch = 0.0f, gs_roll = 0.0f, gs_yaw = 0.0f;
+int16_t accel_raw[3];
+float accel_g[3];         
+int16_t gyro_raw[3]; 
+float gyro_dps[3];
+int32_t quat[4];
 
 /* USER CODE END PV */
 
@@ -113,30 +137,85 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_USB_DEVICE_Init();
+  MX_TIM2_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
-
     DWT_Delay_Init();
+    HAL_TIM_Base_Start_IT(&htim5);
 
-    // if(sd_mount()) {
+    // if(SD_Mount()) {
     //     Error_Handler();
     // }
-
-    // ST7735_Init();
-    // ST7735_FillScreen(ST7735_MAGENTA);
-    // ST7735_Update();
 
     // if(W25Q_Init()) {
     //     Error_Handler();
     // }
 
+    // W25Q_Init();
+    // SD_Mount();
+
+    ST7735_Init();
+    ST7735_rotation(4);
+
+    Joystick_Start();
+    MPU_Init();
+
+    HAL_TIM_Encoder_Start_IT(&htim2, TIM_CHANNEL_2);
+
+    // Encoder_SetClickFunc(test_clk);
+    // Encoder_SetScrolFunc(test_scrol);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
-    HAL_Delay(500);
+    // uint32_t mpu_time = 0;
+    uint32_t ui_time = 0;
+    while (1)
+    {
+
+        // if(HAL_GetTick() - mpu_time > 50) {
+        //     mpu_time = HAL_GetTick();
+        //     // MPU_Read_FIFO(mpu_data, 20);
+        //     printf("MPU: %d\r\n", MPU_Read_FIFO(mpu_data, 100));
+        //     printf("T: %lu\r\n", HAL_GetTick() - mpu_time);
+        // }
+
+        if(HAL_GetTick() - ui_time > 200) {
+            ui_time = HAL_GetTick();
+            MPU_GetData(&mpu_data);
+            MPU_CalcAnglesFromAccel(&mpu_data, &angles);
+            Joystick_GetData(&joy_data);
+            DHT_Read(&dht_data);
+
+            ST7735_ClearFrameBuffer();
+
+            char data_str[64];
+            sprintf(data_str, "Enc C=%d D=%d SW=%d", Encoder_GetCount(), Encoder_GetScrol(), Encoder_GetClick());
+            ST7735_print(0, 5, ST7735_CYAN, 0, 0, &Font_7x9, 0, data_str);
+            
+            sprintf(data_str, "Joy X=%d Y=%d SW=%d", -joy_data.x, -joy_data.y, Joystick_GetClick());
+            ST7735_print(0, 20, ST7735_CYAN, 0, 0, &Font_7x9, 0, data_str);
+
+            sprintf(data_str, "Accel X=%d Y=%d Z=%d", -(int)(mpu_data.accel[1]*100), -(int)(mpu_data.accel[2]*100), (int)(-mpu_data.accel[0]*100));
+            ST7735_print(0, 35, ST7735_CYAN, 0, 0, &Font_6x8, 0, data_str);
+
+            sprintf(data_str, "Angle P=%d R=%d Temp=%d", (int)angles.pitch, (int)angles.roll, (int)(mpu_data.temp));
+            ST7735_print(0, 50, ST7735_CYAN, 0, 0, &Font_6x8, 0, data_str);
+
+            sprintf(data_str, "Temp=%d Hum=%d", (int)dht_data.temp, dht_data.hum);
+            ST7735_print(0, 100, ST7735_CYAN, 0, 0, &Font_7x9, 0, data_str);
+
+            sprintf(data_str, "Flash=%d SD=%d", W25Q_CheckState(), SD_CheckState());
+            ST7735_print(0, 115, ST7735_CYAN, 0, 0, &Font_7x9, 0, data_str);
+
+            ST7735_Update();
+
+            HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
+            // printf("T: %lu\r\n", HAL_GetTick() - ui_time);
+        }
+        
+        
+        HAL_Delay(10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -205,7 +284,7 @@ void Error_Handler(void)
   while (1)
   {
     HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
-    DWT_DelayMs(100);
+    DWT_DelayMs(50);
   }
   /* USER CODE END Error_Handler_Debug */
 }

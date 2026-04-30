@@ -84,7 +84,7 @@ int SD_Mount(void) {
 	}
 
 	FRESULT res;
-	extern uint8_t SD_is_sdhc(void);
+	extern uint8_t SD_IsSdhc(void);
 
 	printf("Linking SD driver...\r\n");
 	if (FATFS_LinkDriver(&SD_Driver, SD_path) != 0) {
@@ -108,7 +108,7 @@ int SD_Mount(void) {
 	{
 		SD_state = 1;
 		printf("SD card mounted successfully at %s\r\n", SD_path);
-		printf("Card Type: %s\r\n", SD_is_sdhc() ? "SDHC/SDXC" : "SDSC");
+		printf("Card Type: %s\r\n", SD_IsSdhc() ? "SDHC/SDXC" : "SDSC");
 
 		// Capacity and free space reporting
 		SD_GetSpace_KB();

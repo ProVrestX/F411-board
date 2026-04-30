@@ -89,10 +89,12 @@ Core/Lib/ST7735/st7735.c \
 Core/Src/UI/sd_menu.c \
 Core/Src/UI/ui.c \
 Core/Src/adc.c \
+Core/Src/buz.c \
 Core/Src/dma.c \
 Core/Src/gpio.c \
 Core/Src/i2c.c \
 Core/Src/irq.c \
+Core/Src/joystick.c \
 Core/Src/main.c \
 Core/Src/spi.c \
 Core/Src/stm32f4xx_hal_msp.c \
@@ -100,6 +102,7 @@ Core/Src/stm32f4xx_it.c \
 Core/Src/syscalls.c \
 Core/Src/sysmem.c \
 Core/Src/system_stm32f4xx.c \
+Core/Src/tim.c \
 Core/Src/usart.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc.c \
@@ -121,6 +124,8 @@ Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr_ex.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc_ex.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_spi.c \
+Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c \
+Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_usb.c \
 FATFS/App/fatfs.c \
@@ -287,7 +292,7 @@ LIBDIR = \
 
 
 # Additional LD Flags from config file
-ADDITIONALLDFLAGS = -Wl,--print-memory-usage -specs=nano.specs 
+ADDITIONALLDFLAGS = -Wl,--print-memory-usage -specs=nano.specs -u _printf_float 
 
 LDFLAGS = $(MCU) $(ADDITIONALLDFLAGS) -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIRECTORY)/$(TARGET).map,--cref -Wl,--gc-sections
 

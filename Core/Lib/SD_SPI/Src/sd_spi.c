@@ -117,7 +117,7 @@ static uint8_t SD_SendCommand(uint8_t cmd, uint32_t arg, uint8_t crc) {
 }
 
 static uint8_t sdhc = 0;
-uint8_t sd_is_sdhc(void) {
+uint8_t SD_IsSdhc(void) {
     return sdhc;
 }
 uint8_t card_initialized = 0;

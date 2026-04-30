@@ -9,7 +9,14 @@ extern C {
 
 
 /* setup */
+// #define MPU_I2C_DMA
+
 #define MPU_I2C hi2c1
+#define MPU_I2C_PORT GPIOB
+#define MPU_SDA_PIN GPIO_PIN_7
+#define MPU_SCL_PIN GPIO_PIN_6
+
+#define MPU_MAX_INIT_ATTEMPT 5
 #define MPU_ADDR 0xD0
 #define MPU_WHO_AM_I_VALUE 0x68
 #define MPU_DATA_LEN 14
@@ -49,14 +56,22 @@ typedef struct {
     uint8_t ready;
 } MPU_Data_t;
 
+typedef struct {
+    float pitch;
+    float roll;
+} MPU_Angles_t;
 
 #ifdef MPU_I2C_DMA
     uint8_t MPU_WaitReady(void);
 #endif
 uint8_t MPU_Init(void);
+uint8_t MPU_StartRead(void);
 void MPU_Read(void);
-void MPU_ReadIfFail(void);
-void MPU_GetData(MPU_Data_t *data);
+uint8_t MPU_Read_FIFO(MPU_Data_t *data, uint8_t max_frames);
+// void MPU_ReadIfFail(void);
+uint8_t MPU_GetData(MPU_Data_t *data);
+void MPU_CalcAnglesFromAccel(const MPU_Data_t* data, MPU_Angles_t* angles);
+void MPU_BusRecovery(void);
 
 // class Accel {
 // public:

@@ -25,6 +25,8 @@ uint16_t ST7735_Y_Start = ST7735_YSTART;
 uint16_t ST7735_Width = 0;
 uint16_t ST7735_Height = 0;
 
+char num_buf[16];
+
 #ifdef ST7735_SPI_HAL_DMA
     volatile uint8_t ST7735_dma_state = 0;
 #endif
@@ -1410,6 +1412,13 @@ void ST7735_print(uint16_t x, uint16_t y, uint16_t TextColor, uint16_t BgColor, 
 }
 //==============================================================================
 
+void ST7735_printNum(uint16_t x, uint16_t y, uint16_t TextColor, uint16_t BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, int num) {
+    ST7735_print(x, y, TextColor, BgColor, TransparentBg, Font, multiplier, __itoa(num, num_buf, 10));
+}
+
+void ST7735_printHex(uint16_t x, uint16_t y, uint16_t TextColor, uint16_t BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, int num) {
+    ST7735_print(x, y, TextColor, BgColor, TransparentBg, Font, multiplier, __itoa(num, num_buf, 16));
+}
 
 //==============================================================================
 // Процедура рисования символа с указаным углом ( 1 буква или знак )

@@ -67,7 +67,7 @@ extern C {
 #endif
 
 uint8_t W25Q_Init(void);
-
+uint8_t W25Q_CheckState(void);
 void W25Q_Reset(void);
 uint16_t W25Q_GetId(void);
 uint32_t W25Q_GetJedecId(void);

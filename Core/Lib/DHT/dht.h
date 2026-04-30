@@ -15,8 +15,8 @@ extern C {
 
 
 typedef struct {
-    float hum;
     float temp;
+    uint8_t hum;
 } DHT_Data_t;
 
 

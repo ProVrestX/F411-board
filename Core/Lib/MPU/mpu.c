@@ -1,5 +1,6 @@
 #include "mpu.h"
-
+#include "i2c.h"
+#include <math.h>
 
 extern I2C_HandleTypeDef MPU_I2C;
 
@@ -7,8 +8,9 @@ extern I2C_HandleTypeDef MPU_I2C;
 #ifdef MPU_I2C_DMA
     volatile uint8_t MPU_dma_state = 0;
 #endif
+volatile uint8_t MPU_read_requested = 0;
 
-uint8_t MPU_init_state = 0;
+static uint8_t MPU_init_state = 0;
 static volatile uint8_t MPU_read_data = 0;
 static volatile uint8_t MPU_read_fail = 0;
 static volatile uint8_t MPU_data[14];
@@ -25,6 +27,7 @@ static void MPU_Receive(uint16_t mem_addr, uint8_t *p_buf, uint16_t size) {
     HAL_I2C_Mem_Read(&MPU_I2C, MPU_ADDR, mem_addr, I2C_MEMADD_SIZE_8BIT, p_buf, size, 100);
 }
 
+
 #ifdef MPU_I2C_DMA
     uint8_t MPU_WaitReady(void) {
         return MPU_dma_state;
@@ -32,39 +35,70 @@ static void MPU_Receive(uint16_t mem_addr, uint8_t *p_buf, uint16_t size) {
 #endif
 
 uint8_t MPU_Init(void) {
-    uint8_t cmd = 0x80;
-    MPU_Transmit(MPU_PWR_MGMT_1, &cmd, 1);
-    HAL_Delay(100);
+    uint8_t attempt = 0;
 
-    cmd = 0x00;
-    MPU_Transmit(MPU_PWR_MGMT_1, &cmd, 1);
-    HAL_Delay(20);
+    do {
+        uint8_t cmd = 0x80;
+        MPU_Transmit(MPU_PWR_MGMT_1, &cmd, 1);
+        HAL_Delay(100);
 
-    cmd = 0x00;
-    MPU_Transmit(MPU_SMPRT_DIV, &cmd, 1);
+        cmd = 0x00;
+        MPU_Transmit(MPU_PWR_MGMT_1, &cmd, 1);
+        HAL_Delay(20);
 
-    cmd = 0x00;
-    MPU_Transmit(MPU_GYRO_CONFIG, &cmd, 1);
+        cmd = 0x00;
+        MPU_Transmit(MPU_SMPRT_DIV, &cmd, 1);
 
-    cmd = 0x00;
-    MPU_Transmit(MPU_ACCEL_CONFIG, &cmd, 1);
+        cmd = 0x06;
+        MPU_Transmit(MPU_CONFIG, &cmd, 1);
 
-    cmd = 0x01;
-    MPU_Transmit(MPU_INT_ENABLE, &cmd, 1);
+        cmd = 0x00;
+        MPU_Transmit(MPU_GYRO_CONFIG, &cmd, 1);
 
-    uint8_t who_am_i;
-    MPU_Receive(MPU_WHO_AM_I, &who_am_i, 1);
-	if((who_am_i & 0x7E) != MPU_WHO_AM_I_VALUE) {
-		return 1;
-	}
+        cmd = 0x00;
+        MPU_Transmit(MPU_ACCEL_CONFIG, &cmd, 1);
 
-	MPU_init_state = 1;
-	return 0;
+        // cmd = 0x70;
+        // MPU_Transmit(MPU_FIFO_EN, &cmd, 1);
+
+        // cmd = 0x10;
+        cmd = 0x01;
+        MPU_Transmit(MPU_INT_ENABLE, &cmd, 1);
+
+        // cmd = 0x44;
+        // MPU_Transmit(MPU_USER_CTRL, &cmd, 1);
+        // cmd = 0x40;
+        // MPU_Transmit(MPU_USER_CTRL, &cmd, 1);
+
+        uint8_t who_am_i;
+        MPU_Receive(MPU_WHO_AM_I, &who_am_i, 1);
+        if((who_am_i & 0x7E) != MPU_WHO_AM_I_VALUE) {
+            // printf("WHO_AM_I Fail: %02X\r\n", who_am_i);
+            MPU_BusRecovery();
+            attempt++;
+            continue;
+        }
+
+        MPU_init_state = 1;
+    } while(!MPU_init_state && attempt < MPU_MAX_INIT_ATTEMPT);
+
+    if(!MPU_init_state) {
+        return 1;
+    }
+
+    return 0;
+}
+
+uint8_t MPU_StartRead(void) {
+    return HAL_I2C_Mem_Read_DMA(&MPU_I2C, MPU_ADDR, MPU_ACCEL_OUT, I2C_MEMADD_SIZE_8BIT, (uint8_t*)MPU_data, MPU_DATA_LEN);
 }
 
 void MPU_Read(void) {
-    if(!MPU_init_state)
+    if(!MPU_init_state || !MPU_read_requested)
         return;
+
+    MPU_read_requested = 0;
+    MPU_read_fail = 0;
 
     #ifdef MPU_I2C_DMA
         if(MPU_dma_state)
@@ -78,9 +112,9 @@ void MPU_Read(void) {
             return;
         }
         // while(MPU_dma_state);
-    #else
+    #else   // Don't use it in irq \/
         if(HAL_I2C_Mem_Read(&MPU_I2C, MPU_ADDR, MPU_ACCEL_OUT, 
-                I2C_MEMADD_SIZE_8BIT, (uint8_t*)MPU_data, MPU_DATA_LEN, 100) != HAL_OK) {
+                I2C_MEMADD_SIZE_8BIT, (uint8_t*)MPU_data, MPU_DATA_LEN, 10) != HAL_OK) {
             MPU_read_fail = 1;
             return;
         }
@@ -89,23 +123,78 @@ void MPU_Read(void) {
     MPU_read_data = 1;
 }
 
-void MPU_ReadIfFail(void) {
-    if(!MPU_read_fail || MPU_read_data)
-        return;
+uint8_t MPU_Read_FIFO(MPU_Data_t *data, uint8_t max_frames) {
+    
+    uint8_t fifo_count_h, fifo_count_l;
+    uint16_t fifo_count;
+    uint8_t buffer[6]; // Макс. размер фрейма
+    int frames_read = 0;
+    
+    // 1. Читаем количество байт в FIFO
+    if (HAL_I2C_Mem_Read(&MPU_I2C, MPU_ADDR, 0x72, 1, &fifo_count_h, 1, 10) != HAL_OK) return 0;
+    if (HAL_I2C_Mem_Read(&MPU_I2C, MPU_ADDR, 0x73, 1, &fifo_count_l, 1, 10) != HAL_OK) return 0;
+    fifo_count = (fifo_count_h << 8) | fifo_count_l;
+    
+    if (HAL_I2C_Mem_Read(&MPU_I2C, MPU_ADDR, MPU_ACCEL_OUT, 1, buffer, 6, 50) != HAL_OK) {
+        return 0;
+    }
 
-    MPU_read_fail = 0;
-    MPU_Read();
+    for(int i = 0; i < 3; i++) {
+        data->accel[i] = (int16_t)((buffer[i*2] << 8) | buffer[i*2 + 1]) / MPU_ACCEL_DIV * G_ACCEL;
+    }
+
+    // Размер одного фрейма: 6 байт (GYRO)
+    const uint8_t FRAME_SIZE = 6;
+    
+    // 2. Читаем полные фреймы (не больше max_frames)
+    while (fifo_count >= FRAME_SIZE && frames_read < max_frames) {
+        // Читаем фрейм целиком
+        if (HAL_I2C_Mem_Read(&MPU_I2C, MPU_ADDR, 0x74, 1, buffer, FRAME_SIZE, 50) != HAL_OK) {
+            return 0;
+        }
+        
+        // Парсим данные (порядок: GX, GY, GZ)
+        // Все данные в формате big-endian
+        for(int i = 0; i < 3; i++) {
+            // data->accel[i] = (int16_t)((buffer[i*2] << 8) | buffer[i*2 + 1]) / MPU_ACCEL_DIV * G_ACCEL;
+            data->gyro[i] = (int16_t)((buffer[i*2] << 8) | buffer[i*2 + 1]) / MPU_GYRO_DIV;
+        }
+        data->ready = 1;
+        
+        fifo_count -= FRAME_SIZE;
+        frames_read++;
+        
+        // Указатели сдвигаем, если нужно читать массив
+        data++;
+    }
+    
+
+    uint8_t ctrl = 0x44; // FIFO_RST + FIFO_EN
+    HAL_I2C_Mem_Write(&MPU_I2C, MPU_ADDR, MPU_USER_CTRL, 1, &ctrl, 1, 100);
+    
+    return frames_read;
 }
 
-void MPU_GetData(MPU_Data_t *data) {
+// void MPU_ReadIfFail(void) {
+//     if(!MPU_read_fail || MPU_read_data)
+//         return;
+
+//     MPU_read_fail = 0;
+//     MPU_Read();
+// }
+
+uint8_t MPU_GetData(MPU_Data_t *data) {
     if(!MPU_init_state)
-        return;
-    if(!MPU_read_data)
-        return;
+        return 1;
+
+    MPU_Read();
 
     #ifdef MPU_I2C_DMA
         while(MPU_dma_state);
     #endif
+
+    if(MPU_read_fail || !MPU_read_data)
+        return 1;
         
     __disable_irq();
     int16_t raw_accel[3], raw_gyro[3], raw_temp;
@@ -124,6 +213,38 @@ void MPU_GetData(MPU_Data_t *data) {
         
     MPU_read_data = 0;
     data->ready = 1;
+
+    return 0;
+}
+
+void MPU_CalcAnglesFromAccel(const MPU_Data_t* data, MPU_Angles_t* angles) {
+    if (!data || !angles || !data->ready) return;
+
+    float ax = -data->accel[1];
+    float ay = -data->accel[2];
+    float az = data->accel[0];
+
+    // 1. Сырые углы из вектора гравитации
+    float raw_roll  = atan2f(ay, az);
+    float raw_pitch = atan2f(-ax, sqrtf(ay * ay + az * az));
+
+    // 2. Радианы → Градусы
+    const float RAD_TO_DEG = 57.295779513f;
+    raw_roll  *= RAD_TO_DEG;
+    raw_pitch *= RAD_TO_DEG;
+
+    // 3. Экспоненциальный НЧ-фильтр (убирает шум/вибрации)
+    // Используем static для сохранения состояния между вызовами
+    static float filt_roll  = 0.0f;
+    static float filt_pitch = 0.0f;
+    const float ALPHA = 0.25f; // 0.1 = сильное сглаживание, 0.3 = быстрая реакция
+
+    filt_roll  = ALPHA * raw_roll  + (1.0f - ALPHA) * filt_roll;
+    filt_pitch = ALPHA * raw_pitch + (1.0f - ALPHA) * filt_pitch;
+
+    // 4. Запись результата
+    angles->roll  = filt_roll;
+    angles->pitch = filt_pitch;
 }
 
 // void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
@@ -133,13 +254,13 @@ void MPU_GetData(MPU_Data_t *data) {
 // 		if(accel._check_flag != FLAG_SET && tim_accel_flag != FLAG_IN_PROCESSING) {
 // 			int16_t accel_tmp;
 // 			for(int i = 0; i < 3; i++) {
-// 				accel_tmp = (accel._mpu_data[i*2] << 8) | accel._mpu_data[i*2+1];
+// 				accel_tmp = (accel._data_data[i*2] << 8) | accel._data_data[i*2+1];
 // 				accel._sum_data[i] += accel_tmp;
 // 			}
 // 			accel._sum_count++;
 // 		}
 
-// 		HAL_I2C_Mem_Read_DMA(accel._hi2c, 0xD0, 0x3B, I2C_MEMADD_SIZE_8BIT, accel._mpu_data, 14);
+// 		HAL_I2C_Mem_Read_DMA(accel._hi2c, 0xD0, 0x3B, I2C_MEMADD_SIZE_8BIT, accel._data_data, 14);
 //     }
 // }
 
@@ -218,34 +339,32 @@ void MPU_GetData(MPU_Data_t *data) {
 // 	_prev_time = HAL_GetTick();
 // }
 
-// void MPU_BusRecovery() {
-//     GPIO_InitTypeDef GPIO_InitStruct = {0};
-//     MPU_I2C.
+void MPU_BusRecovery(void) {
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-//     // Настройка SCL (PB6) и SDA (PB7) как GPIO
-//     GPIO_InitStruct.Pin = GPIO_PIN_6 | GPIO_PIN_7;
-//     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
-//     GPIO_InitStruct.Pull = GPIO_NOPULL;
-//     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-//     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    // Настройка SCL (PB6) и SDA (PB7) как GPIO
+    GPIO_InitStruct.Pin = MPU_SCL_PIN | MPU_SDA_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(MPU_I2C_PORT, &GPIO_InitStruct);
 
-//     // Генерация 9 тактовых импульсов для "разблокировки" устройств
-//     for (int i = 0; i < 9; i++) {
-//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
-//         HAL_Delay(1);
-//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
-//         HAL_Delay(1);
-//     }
+    // Генерация 9 тактовых импульсов для "разблокировки" устройств
+    for (int i = 0; i < MPU_DATA_LEN; i++) {
+        HAL_GPIO_WritePin(MPU_I2C_PORT, MPU_SCL_PIN, GPIO_PIN_RESET);
+        HAL_Delay(1);
+        HAL_GPIO_WritePin(MPU_I2C_PORT, MPU_SCL_PIN, GPIO_PIN_SET);
+        HAL_Delay(1);
+    }
 
-//     // Стоп-условие
-//     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
-//     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
-//     HAL_Delay(1);
+    // Стоп-условие
+    HAL_GPIO_WritePin(MPU_I2C_PORT, MPU_SDA_PIN, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(MPU_I2C_PORT, MPU_SCL_PIN, GPIO_PIN_SET);
+    HAL_Delay(1);
 
-//     // Восстановление альтернативной функции
-//     GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
-//     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-// }
+    // Восстановление альтернативной функции
+    HAL_I2C_MspInit(&MPU_I2C);
+}
 
 // void MPU::DMA_Restart() {
 // 	do {

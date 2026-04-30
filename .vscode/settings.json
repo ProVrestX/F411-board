@@ -8,5 +8,6 @@
             "map": "F411-board.map",
             "elf": "debug/F411-board.elf"
         }
-    ]
+    ],
+    "cortex-debug.variableUseNaturalFormat": false
 }

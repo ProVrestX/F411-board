@@ -39,6 +39,6 @@ SD_Status SD_ReadBlocks(uint8_t *buff, uint32_t sector, uint32_t count);
 SD_Status SD_WriteBlocks(const uint8_t *buff, uint32_t sector, uint32_t count);
 SD_Status SD_ReadMultiBlocks(uint8_t *buff, uint32_t sector, uint32_t count);
 SD_Status SD_WriteMultiBlocks(const uint8_t *buff, uint32_t sector, uint32_t count);
-uint8_t sd_is_sdhc(void);
+uint8_t SD_IsSdhc(void);
 
 #endif // __SD_SPI_H__
