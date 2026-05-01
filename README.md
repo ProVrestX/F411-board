@@ -8,7 +8,8 @@
 
 ## Scheme
 
-[Open Scheme (PDF)](Files/Scheme.pdf)
+<!-- [Open Scheme (PDF)](Files/Scheme.pdf) -->
+<img src="Files/Scheme.svg" alt="scheme photo" width="100%" height="auto">
 
 
 ## Modules
